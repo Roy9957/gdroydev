@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ronobir | Godot Developer</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        godot: {
+                            base: '#478cbf',
+                            dark: '#33668c',
+                            bg: '#202531',
+                            light: '#5ca8e0'
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'slide-in': 'slideIn 0.5s ease-out',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        glow: {
+                            'from': { boxShadow: '0 0 10px rgba(71, 140, 191, 0.3)' },
+                            'to': { boxShadow: '0 0 20px rgba(71, 140, 191, 0.7)' },
+                        },
+                        slideIn: {
+                            'from': { opacity: '0', transform: 'translateY(20px)' },
+                            'to': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Particle Background Styling */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(135deg, #151a24 0%, #202531 50%, #1a2238 100%);
+            overflow: hidden;
+        }
+
+        /* Glass Panel for cards */
+        .glass-panel {
+            background: rgba(32, 37, 49, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(71, 140, 191, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            background: rgba(32, 37, 49, 0.85);
+            border: 1px solid rgba(71, 140, 191, 0.4);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Gradient text */
+        .gradient-text {
+            background: linear-gradient(90deg, #478cbf 0%, #5ca8e0 50%, #6bc5ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: #151a24; }
+        ::-webkit-scrollbar-thumb { 
+            background: linear-gradient(to bottom, #478cbf, #33668c); 
+            border-radius: 5px; 
+        }
+        
+        /* Custom cursor effects */
+        .cursor-glow {
+            position: relative;
+        }
+        
+        .cursor-glow::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 120%;
+            height: 120%;
+            background: radial-gradient(circle, rgba(71, 140, 191, 0.2) 0%, transparent 70%);
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .cursor-glow:hover::after {
+            opacity: 1;
+        }
+        
+        /* Animated border */
+        .animated-border {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .animated-border::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #478cbf, #5ca8e0, #478cbf);
+            z-index: -1;
+            background-size: 400% 400%;
+            animation: gradient 3s ease infinite;
+            border-radius: inherit;
+        }
+        
+        .animated-border::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #202531;
+            border-radius: inherit;
+            z-index: -1;
+        }
+        
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+    </style>
+</head>
+<body class="text-slate-300 font-sans selection:bg-godot-base selection:text-white overflow-x-hidden">
+
+    <!-- PARTICLE BACKGROUND CANVAS -->
+    <div id="canvas-container">
+        <canvas id="particles"></canvas>
+    </div>
+
+    <!-- Floating Godot Logo Background -->
+    <div class="fixed top-1/4 left-10 opacity-5 animate-float hidden lg:block">
+        <div class="text-[15rem] text-godot-base font-bold">G</div>
+    </div>
+    <div class="fixed bottom-1/4 right-10 opacity-5 animate-float hidden lg:block" style="animation-delay: 2s;">
+        <div class="text-[15rem] text-godot-base font-bold">D</div>
+    </div>
+
+    <!-- Navigation -->
+    <nav id="navbar" class="fixed w-full z-50 transition-all duration-300 py-4 border-b border-transparent">
+        <div class="max-w-7xl mx-auto px-6 flex justify-between items-center">
+            <a href="#" class="flex items-center gap-3 group cursor-glow">
+                <!-- Animated Godot Icon -->
+                <div class="relative">
+                    <div class="w-12 h-12 bg-gradient-to-br from-godot-base to-godot-dark rounded-xl flex items-center justify-center text-white shadow-xl shadow-godot-base/30 group-hover:shadow-godot-base/50 transition-all duration-300 group-hover:scale-110">
+                        <i class="ph-fill ph-robot text-2xl"></i>
+                    </div>
+                    <div class="absolute -top-1 -right-1 w-4 h-4 bg-godot-base rounded-full animate-pulse"></div>
+                </div>
+                <div>
+                    <span class="text-2xl font-bold text-white tracking-tight">RONO<span class="gradient-text">BIR</span></span>
+                    <div class="text-xs text-slate-500 font-mono tracking-wider">GODOT DEVELOPER</div>
+                </div>
+            </a>
+
+            <!-- Mobile Menu Toggle -->
+            <button onclick="toggleMenu()" class="md:hidden text-white text-2xl p-2 glass-panel rounded-xl hover:bg-godot-base/20 transition-all duration-300">
+                <i class="ph ph-list"></i>
+            </button>
+
+            <!-- Desktop Links -->
+            <div class="hidden md:flex items-center gap-8">
+                <a href="#home" class="relative px-4 py-2 font-mono text-sm text-slate-300 hover:text-white group">
+                    <span class="relative z-10">Main()</span>
+                    <div class="absolute inset-0 bg-godot-base/0 group-hover:bg-godot-base/10 rounded-lg transition-all duration-300"></div>
+                    <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-godot-base to-godot-light group-hover:w-full transition-all duration-300"></div>
+                </a>
+                <a href="#games" class="relative px-4 py-2 font-mono text-sm text-slate-300 hover:text-white group">
+                    <span class="relative z-10">Projects[]</span>
+                    <div class="absolute inset-0 bg-godot-base/0 group-hover:bg-godot-base/10 rounded-lg transition-all duration-300"></div>
+                    <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-godot-base to-godot-light group-hover:w-full transition-all duration-300"></div>
+                </a>
+                <a href="#about" class="relative px-4 py-2 font-mono text-sm text-slate-300 hover:text-white group">
+                    <span class="relative z-10">NodeTree</span>
+                    <div class="absolute inset-0 bg-godot-base/0 group-hover:bg-godot-base/10 rounded-lg transition-all duration-300"></div>
+                    <div class="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-godot-base to-godot-light group-hover:w-full transition-all duration-300"></div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden absolute top-full left-0 w-full bg-[#202531]/95 backdrop-blur-lg border-b border-gray-800 p-6 flex-col gap-4 shadow-2xl animate-slide-in">
+            <a href="#home" onclick="toggleMenu()" class="text-lg font-bold text-white py-3 border-b border-slate-800 hover:border-godot-base transition-colors">Home</a>
+            <a href="#games" onclick="toggleMenu()" class="text-lg font-bold text-white py-3 border-b border-slate-800 hover:border-godot-base transition-colors">My Games</a>
+            <a href="#about" onclick="toggleMenu()" class="text-lg font-bold text-white py-3 hover:text-godot-base transition-colors">About Me</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="min-h-screen flex items-center pt-20">
+        <div class="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
+            <div class="space-y-8">
+                <div class="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-gradient-to-r from-godot-base/10 to-cyan-400/10 border border-godot-base/30 text-godot-base text-sm font-mono font-bold animate-pulse-slow">
+                    <span class="w-2 h-2 bg-godot-base rounded-full animate-pulse"></span>
+                    Godot Engine Specialist
+                    <i class="ph ph-lightning text-base ml-1"></i>
+                </div>
+                
+                <h1 class="text-5xl md:text-7xl font-extrabold text-white leading-tight">
+                    Crafting Games<br>
+                    <span class="gradient-text">Exclusively</span> with
+                    <div class="relative inline-block">
+                        <span class="relative z-10">Godot</span>
+                        <div class="absolute -bottom-2 left-0 w-full h-3 bg-godot-base/30 -z-10 rounded-full"></div>
+                    </div>
+                </h1>
+                
+                <p class="text-xl text-slate-400 max-w-lg leading-relaxed">
+                    A <span class="text-white font-bold">mobile-first</span> Game Developer building immersive 2D & 3D worlds with the power of 
+                    <span class="text-godot-light font-bold">Godot Engine</span> and <span class="text-cyan-300 font-bold">HTML5</span>.
+                </p>
+
+                <div class="flex flex-wrap gap-6 pt-6">
+                    <a href="#games" class="px-10 py-5 bg-gradient-to-r from-godot-base to-godot-dark hover:from-godot-light hover:to-godot-base text-white rounded-xl font-bold transition-all duration-300 shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40 flex items-center gap-3 group cursor-glow">
+                        <i class="ph-fill ph-game-controller text-xl group-hover:scale-125 transition-transform"></i>
+                        <span>Explore Projects</span>
+                        <i class="ph ph-arrow-right text-lg group-hover:translate-x-2 transition-transform"></i>
+                    </a>
+                    
+                    <a href="#about" class="px-8 py-5 glass-panel rounded-xl font-bold hover:bg-godot-base/10 transition-all duration-300 flex items-center gap-2 group">
+                        <i class="ph ph-user-circle text-xl"></i>
+                        <span>About Me</span>
+                    </a>
+                </div>
+                
+                <!-- Tech Stack -->
+                <div class="pt-8">
+                    <p class="text-slate-500 text-sm mb-3">TECH STACK</p>
+                    <div class="flex flex-wrap gap-3">
+                        <div class="px-3 py-2 bg-godot-base/10 rounded-lg flex items-center gap-2 border border-godot-base/20">
+                            <i class="ph-fill ph-cube text-godot-base"></i>
+                            <span class="text-sm font-mono">Godot 4.4.1</span>
+                        </div>
+                        <div class="px-3 py-2 bg-godot-base/10 rounded-lg flex items-center gap-2 border border-godot-base/20">
+                            <i class="ph-fill ph-brackets-curly text-cyan-400"></i>
+                            <span class="text-sm font-mono">GDScript</span>
+                        </div>
+                        <div class="px-3 py-2 bg-godot-base/10 rounded-lg flex items-center gap-2 border border-godot-base/20">
+                            <i class="ph-fill ph-globe-hemisphere-west text-green-400"></i>
+                            <span class="text-sm font-mono">HTML5</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Code Block Visual -->
+            <div class="relative hidden md:block">
+                <div class="glass-panel rounded-2xl p-8 font-mono text-sm shadow-2xl transform rotate-1 hover:rotate-0 transition-all duration-500">
+                    <div class="flex gap-2 mb-6">
+                        <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                        <div class="flex-1 text-center text-xs text-slate-600">game.gd</div>
+                    </div>
+                    <div class="text-slate-300 space-y-4">
+                        <p><span class="text-pink-400">extends</span> <span class="text-godot-base font-bold">CharacterBody2D</span></p>
+                        <p>&nbsp;</p>
+                        <p><span class="text-pink-400">@export_range</span>(<span class="text-amber-400">1.0</span>, <span class="text-amber-400">10.0</span>) <span class="text-pink-400">var</span> speed = <span class="text-amber-400">5.0</span></p>
+                        <p><span class="text-pink-400">var</span> velocity = <span class="text-godot-base">Vector2</span>.ZERO</p>
+                        <p><span class="text-pink-400">const</span> DEVELOPER = <span class="text-green-400">"Ronobir"</span></p>
+                        <p>&nbsp;</p>
+                        <p><span class="text-pink-400">func</span> <span class="text-yellow-300">_ready</span>():</p>
+                        <p class="pl-6"><span class="text-slate-500"># Made entirely on Mobile</span></p>
+                        <p class="pl-6">print(<span class="text-green-400">"Hello from %s!"</span> % DEVELOPER)</p>
+                        <p>&nbsp;</p>
+                        <p><span class="text-pink-400">func</span> <span class="text-yellow-300">_physics_process</span>(delta):</p>
+                        <p class="pl-6">process_input()</p>
+                        <p class="pl-6">move_and_slide()</p>
+                        <p class="pl-6"><span class="text-godot-base">Engine</span>.set_fps(<span class="text-amber-400">60</span>)</p>
+                    </div>
+                </div>
+                
+                <!-- Floating elements around code block -->
+                <div class="absolute -top-4 -right-4 w-8 h-8 bg-godot-base/30 rounded-full animate-pulse"></div>
+                <div class="absolute -bottom-4 -left-4 w-6 h-6 bg-cyan-400/20 rounded-full animate-pulse" style="animation-delay: 0.5s;"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Games Showcase -->
+    <section id="games" class="py-24 relative">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
+                <div>
+                    <div class="text-sm text-slate-500 font-mono mb-2">PORTFOLIO</div>
+                    <h2 class="text-5xl font-extrabold text-white mb-2">Game <span class="gradient-text">Projects</span></h2>
+                    <p class="text-slate-400 max-w-xl">Built with Godot Engine and exported to Web/HTML5 for seamless browser gameplay.</p>
+                </div>
+                <!-- Filter -->
+                <div class="flex gap-2 glass-panel p-1 rounded-xl" id="filter-container">
+                    <button class="filter-btn active px-5 py-2.5 rounded-lg text-sm font-bold bg-gradient-to-r from-godot-base to-godot-dark text-white transition-all duration-300" data-filter="all">All Games</button>
+                    <button class="filter-btn px-5 py-2.5 rounded-lg text-sm font-bold bg-slate-800/50 text-slate-300 hover:text-white hover:bg-godot-base/20 transition-all duration-300" data-filter="2D">2D</button>
+                    <button class="filter-btn px-5 py-2.5 rounded-lg text-sm font-bold bg-slate-800/50 text-slate-300 hover:text-white hover:bg-godot-base/20 transition-all duration-300" data-filter="3D">3D</button>
+                </div>
+            </div>
+
+            <!-- Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="games-grid">
+                <!-- Games injected via JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="py-24">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="glass-panel rounded-3xl p-12 border border-godot-base/20 relative overflow-hidden">
+                <!-- Background pattern -->
+                <div class="absolute top-0 right-0 w-64 h-64 bg-godot-base/5 rounded-full -translate-y-32 translate-x-32"></div>
+                <div class="absolute bottom-0 left-0 w-48 h-48 bg-godot-base/5 rounded-full translate-y-24 -translate-x-24"></div>
+                
+                <div class="grid md:grid-cols-2 gap-16 items-center relative z-10">
+                    <div>
+                        <div class="text-sm text-slate-500 font-mono mb-3">ABOUT THE DEVELOPER</div>
+                        <h3 class="text-4xl font-bold text-white mb-8">Meet <span class="gradient-text">Ronobir</span></h3>
+                        <p class="text-slate-300 mb-8 leading-relaxed text-lg">
+                            I'm a passionate game developer who has embraced the <span class="text-godot-light font-bold">Godot Engine</span> as my primary tool. 
+                            My unique approach involves designing, coding, and deploying games primarily from <span class="text-white font-bold">mobile devices</span>, 
+                            proving that powerful game development isn't confined to desktop workstations.
+                        </p>
+                        <div class="space-y-6">
+                            <div class="flex items-start gap-4">
+                                <div class="p-3 bg-gradient-to-br from-godot-base/20 to-cyan-400/10 rounded-xl">
+                                    <i class="ph-fill ph-device-mobile text-2xl text-godot-base"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-white font-bold mb-1">Mobile-First Development</h4>
+                                    <p class="text-slate-400 text-sm">Entire workflow optimized for mobile devices from concept to deployment.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-4">
+                                <div class="p-3 bg-gradient-to-br from-godot-base/20 to-cyan-400/10 rounded-xl">
+                                    <i class="ph-fill ph-brackets-curly text-2xl text-godot-base"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-white font-bold mb-1">GDScript Expert</h4>
+                                    <p class="text-slate-400 text-sm">Deep expertise in Godot's native scripting language for rapid development.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Skills Visualization -->
+                    <div class="space-y-8">
+                        <div class="bg-slate-900/50 p-8 rounded-2xl border border-slate-800">
+                            <h4 class="text-white font-bold mb-6 text-lg">Development Stack</h4>
+                            <div class="space-y-6">
+                                <div>
+                                        <div class="flex justify-between mb-2">
+                                            <div class="flex items-center gap-2">
+                                                <i class="ph-fill ph-cube text-godot-base"></i>
+                                                <span class="font-medium">Godot Engine</span>
+                                            </div>
+                                            <span class="text-godot-base font-bold">95%</span>
+                                        </div>
+                                    <div class="h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                                        <div class="h-full bg-gradient-to-r from-godot-base to-godot-light rounded-full"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-2">
+                                        <div class="flex items-center gap-2">
+                                            <i class="ph-fill ph-brackets-curly text-cyan-400"></i>
+                                            <span class="font-medium">GDScript</span>
+                                        </div>
+                                        <span class="text-cyan-400 font-bold">95%</span>
+                                    </div>
+                                    <div class="h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                                        <div class="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full" style="width: 95%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-2">
+                                        <div class="flex items-center gap-2">
+                                            <i class="ph-fill ph-globe-hemisphere-west text-green-400"></i>
+                                            <span class="font-medium">HTML5 Export</span>
+                                        </div>
+                                        <span class="text-green-400 font-bold">90%</span>
+                                    </div>
+                                    <div class="h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                                        <div class="h-full bg-gradient-to-r from-green-400 to-emerald-500 rounded-full" style="width: 90%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Stats Card -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="glass-panel p-5 rounded-xl text-center">
+                                <div class="text-3xl font-bold text-white mb-1">100%</div>
+                                <div class="text-sm text-slate-400">Mobile Workflow</div>
+                            </div>
+                            <div class="glass-panel p-5 rounded-xl text-center">
+                                <div class="text-3xl font-bold text-white mb-1">3+</div>
+                                <div class="text-sm text-slate-400">Published Games</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <!-- Footer - Enhanced Version -->
+<footer class="bg-gradient-to-t from-[#0f121a] to-[#151a24] py-12 border-t border-slate-800/30 relative overflow-hidden">
+    <!-- Decorative background elements -->
+    <div class="absolute bottom-0 left-0 w-32 h-32 bg-godot-base/5 rounded-full -translate-x-16 translate-y-16"></div>
+    <div class="absolute top-0 right-0 w-24 h-24 bg-cyan-400/5 rounded-full translate-x-12 -translate-y-12"></div>
+    
+    <div class="max-w-7xl mx-auto px-6 relative z-10">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-8 mb-8">
+            <div class="flex items-center gap-4">
+                <div class="relative group">
+                    <div class="w-12 h-12 bg-gradient-to-br from-godot-base to-godot-dark rounded-xl flex items-center justify-center text-white shadow-lg shadow-godot-base/20 group-hover:shadow-godot-base/40 transition-all duration-300">
+                        <i class="ph-fill ph-robot text-2xl"></i>
+                    </div>
+                    <div class="absolute -top-1 -right-1 w-3 h-3 bg-godot-base rounded-full animate-pulse"></div>
+                </div>
+                <div>
+                    <span class="text-2xl font-bold text-white">RONO<span class="gradient-text">BIR</span></span>
+                    <div class="text-xs text-slate-500 font-mono tracking-wider">GODOT ENGINE SPECIALIST</div>
+                </div>
+            </div>
+            
+            <div class="flex gap-4">
+                <!-- GitHub -->
+                <a href="https://github.com/roy9957" target="_blank" 
+                   class="relative w-12 h-12 glass-panel rounded-xl flex items-center justify-center text-slate-300 hover:text-white hover:bg-godot-base/20 transition-all duration-300 group">
+                    <i class="ph-fill ph-github-logo text-xl group-hover:scale-110 transition-transform"></i>
+                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-slate-900/90 backdrop-blur-sm text-xs px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-slate-700">
+                        GitHub Profile
+                        <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45 border-b border-r border-slate-700"></div>
+                    </div>
+                </a>
+                
+                <!-- Discord -->
+                <a href="https://discord.gg/GPGkPXJ6tg" target="_blank" 
+                   class="relative w-12 h-12 glass-panel rounded-xl flex items-center justify-center text-slate-300 hover:text-[#5865F2] hover:bg-[#5865F2]/10 transition-all duration-300 group">
+                    <i class="ph-fill ph-discord-logo text-xl group-hover:scale-110 transition-transform"></i>
+                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-slate-900/90 backdrop-blur-sm text-xs px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-slate-700">
+                        Discord server
+                        <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45 border-b border-r border-slate-700"></div>
+                    </div>
+                </a>
+                
+                <!-- Facebook -->
+                <a href="https://www.facebook.com/ronobir988" target="_blank" 
+                   class="relative w-12 h-12 glass-panel rounded-xl flex items-center justify-center text-slate-300 hover:text-[#1877F2] hover:bg-[#1877F2]/10 transition-all duration-300 group">
+                    <i class="ph-fill ph-facebook-logo text-xl group-hover:scale-110 transition-transform"></i>
+                    <div class="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-slate-900/90 backdrop-blur-sm text-xs px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-slate-700">
+                        Facebook Profile
+                        <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45 border-b border-r border-slate-700"></div>
+                    </div>
+                </a>
+            </div>
+        </div>
+        
+        <div class="mt-10 pt-8 border-t border-slate-800/30 text-center">
+            <p class="text-slate-500 mb-3">© 2025 Ronobir. All games crafted exclusively with Godot Engine.</p>
+            <div class="flex justify-center items-center gap-6 text-sm text-slate-600">
+                <span class="flex items-center gap-2">
+                    <i class="ph ph-device-mobile text-xs"></i>
+                    <span>Mobile-First Development</span>
+                </span>
+                <span class="h-1 w-1 bg-slate-700 rounded-full"></span>
+                <span class="flex items-center gap-2">
+                    <i class="ph ph-cube text-xs"></i>
+                    <span>Godot 4.4.1 stable</span>
+                </span>
+                <span class="h-1 w-1 bg-slate-700 rounded-full"></span>
+                <span class="flex items-center gap-2">
+                    <i class="ph ph-globe-hemisphere-west text-xs"></i>
+                    <span>HTML5 Export</span>
+                </span>
+            </div>
+        </div>
+    </div>
+</footer>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // 1. ENHANCED PARTICLE SYSTEM
+        const canvas = document.getElementById('particles');
+        const ctx = canvas.getContext('2d');
+        let particlesArray;
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initParticles();
+        });
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = Math.random() * 1 - 0.5;
+                this.speedY = Math.random() * 1 - 0.5;
+                this.color = Math.random() > 0.5 ? '#478cbf' : '#5ca8e0';
+                this.alpha = Math.random() * 0.5 + 0.3;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                
+                // More organic boundary behavior
+                if (this.x > canvas.width) this.x = 0;
+                if (this.x < 0) this.x = canvas.width;
+                if (this.y > canvas.height) this.y = 0;
+                if (this.y < 0) this.y = canvas.height;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function initParticles() {
+            particlesArray = [];
+            const numberOfParticles = (canvas.width * canvas.height) / 12000;
+            for (let i = 0; i < numberOfParticles; i++) {
+                particlesArray.push(new Particle());
+            }
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw gradient background
+            const gradient = ctx.createRadialGradient(
+                canvas.width/2, canvas.height/2, 0,
+                canvas.width/2, canvas.height/2, canvas.width
+            );
+            gradient.addColorStop(0, 'rgba(32, 37, 49, 0.1)');
+            gradient.addColorStop(1, 'rgba(21, 26, 36, 0.8)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = 0; i < particlesArray.length; i++) {
+                particlesArray[i].update();
+                particlesArray[i].draw();
+                
+                for (let j = i; j < particlesArray.length; j++) {
+                    const dx = particlesArray[i].x - particlesArray[j].x;
+                    const dy = particlesArray[i].y - particlesArray[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 120) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(71, 140, 191, ${0.1 * (1 - distance/120)})`;
+                        ctx.lineWidth = 0.8;
+                        ctx.moveTo(particlesArray[i].x, particlesArray[i].y);
+                        ctx.lineTo(particlesArray[j].x, particlesArray[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animateParticles);
+        }
+
+        initParticles();
+        animateParticles();
+
+        // 2. NAVBAR SCROLL EFFECT
+        window.addEventListener('scroll', () => {
+            const navbar = document.getElementById('navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('glass-panel', 'border-slate-800');
+                navbar.classList.remove('border-transparent');
+            } else {
+                navbar.classList.remove('glass-panel', 'border-slate-800');
+                navbar.classList.add('border-transparent');
+            }
+        });
+
+        // 3. GAME PORTFOLIO LOGIC
+        const gamesData = [
+            {
+                title: "Coming to see the horror",
+                type: "3D",
+                desc: "A mobile 3D horror experience. Download and explore the fear.",
+                tags: ["Godot", "Mobile", "Horror"],
+                icon: "ph-ghost",
+                link: "https://roy9957.itch.io/roy-horror",
+                statusText: "Download Now",
+                color: "from-purple-500/20 to-blue-500/20"
+            },
+            {
+                title: "Unlimited Zombie",
+                type: "3D",
+                desc: "A challenging 3D mobile shooter against endless hordes of zombies.",
+                tags: ["Godot", "Mobile", "Shooter"],
+                icon: "ph-skull",
+                link: "https://roy9957.itch.io/zombies",
+                statusText: "Download Now",
+                color: "from-red-500/20 to-orange-500/20"
+            },
+            {
+                title: "MOBE GAME",
+                type: "2D",
+                desc: "A 2D game optimized for web browsers and mobile play. Simple fun!",
+                tags: ["Web", "HTML"],
+                icon: "ph-monitor",
+                link: "https://www.mobe-game.rf.gd",
+                statusText: "Play Online",
+                color: "from-green-500/20 to-emerald-500/20"
+            }
+        ];
+
+        const gamesGrid = document.getElementById('games-grid');
+        
+        function renderGames(filter) {
+            gamesGrid.innerHTML = '';
+            const filtered = filter === 'all' ? gamesData : gamesData.filter(g => g.type === filter);
+            
+            filtered.forEach(game => {
+                const html = `
+                    <div class="group relative">
+                        <div class="absolute inset-0 bg-gradient-to-br ${game.color} rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        <div class="glass-panel rounded-2xl p-8 hover:translate-y-[-8px] transition-all duration-500 group-hover:border-godot-base/40 relative z-10 h-full">
+                            <div class="flex justify-between items-start mb-6">
+                                <div class="p-4 bg-gradient-to-br from-godot-base/20 to-godot-light/20 rounded-xl text-godot-base">
+                                    <i class="ph-fill ${game.icon} text-3xl"></i>
+                                </div>
+                                <span class="text-xs font-mono px-3 py-1.5 rounded-full bg-slate-800/70 text-slate-300 border border-slate-700">${game.type}</span>
+                            </div>
+                            <h3 class="text-2xl font-bold text-white mb-4 group-hover:text-godot-light transition-colors">${game.title}</h3>
+                            <p class="text-slate-400 mb-6 leading-relaxed">${game.desc}</p>
+                            <div class="flex flex-wrap gap-2 mb-8">
+                                ${game.tags.map(t => `<span class="text-xs px-3 py-1.5 rounded-full bg-slate-800/50 text-slate-400 border border-slate-700">${t}</span>`).join('')}
+                            </div>
+                            <button onclick="window.open('${game.link}', '_blank')" class="w-full py-3.5 bg-gradient-to-r from-godot-base to-godot-dark hover:from-godot-light hover:to-godot-base text-white font-bold rounded-xl transition-all duration-300 text-sm flex items-center justify-center gap-2 group/btn">
+                                ${game.statusText}
+                                <i class="ph ph-arrow-right group-hover/btn:translate-x-1 transition-transform"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                gamesGrid.innerHTML += html;
+            });
+        }
+
+        // Filter Logic
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => {
+b.classList.remove('bg-gradient-to-r', 'from-godot-base', 'to-godot-dark', 'text-white');
+b.classList.add('bg-slate-800/50', 'text-slate-300');
+                });
+                // Set active
+                e.target.classList.remove('bg-slate-800/50', 'text-slate-300');
+                e.target.classList.add('bg-gradient-to-r', 'from-godot-base', 'to-godot-dark', 'text-white');
+                
+                renderGames(e.target.dataset.filter);
+            });
+        });
+
+        // Initialize Games
+        renderGames('all');
+
+        // Mobile Menu Toggle
+        function toggleMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+            menu.classList.toggle('flex');
+            
+            // Add a small animation effect
+            if (!menu.classList.contains('hidden')) {
+                const links = menu.querySelectorAll('a');
+                links.forEach((link, index) => {
+                    link.style.animationDelay = `${index * 0.1}s`;
+                    link.classList.add('animate-slide-in');
+                });
+            }
+        }
+
+        // 4. SMOOTH SCROLLING FOR ANCHOR LINKS
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                    
+                    // Close mobile menu if open
+                    const mobileMenu = document.getElementById('mobile-menu');
+                    if (!mobileMenu.classList.contains('hidden')) {
+                        toggleMenu();
+                    }
+                }
+            });
+        });
+
+        // 5. PARALLAX EFFECT ON SCROLL
+        let lastScrollY = window.scrollY;
+        window.addEventListener('scroll', () => {
+            const scrolled = window.scrollY;
+            const speed = 0.5;
+            
+            // Move background elements slightly for parallax
+            const floatingGs = document.querySelectorAll('.fixed.top-1\\/4, .fixed.bottom-1\\/4');
+            floatingGs.forEach(el => {
+                el.style.transform = `translateY(${scrolled * 0.1}px)`;
+            });
+            
+            lastScrollY = scrolled;
+        });
+
+        // 6. ADD INTERACTIVE HOVER EFFECTS TO ALL GLASS PANELS
+        document.addEventListener('DOMContentLoaded', () => {
+            const glassPanels = document.querySelectorAll('.glass-panel');
+            
+            glassPanels.forEach(panel => {
+                panel.addEventListener('mouseenter', () => {
+                    panel.style.transform = 'translateY(-2px)';
+                });
+                
+                panel.addEventListener('mouseleave', () => {
+                    panel.style.transform = 'translateY(0)';
+                });
+            });
+        });
+
+        // 7. TYPEWRITER EFFECT FOR HERO TITLE (Optional enhancement)
+        function typewriterEffect() {
+            const title = document.querySelector('#home h1');
+            if (!title) return;
+            
+            const text = title.innerText;
+            title.innerHTML = '';
+            
+            let i = 0;
+            function typeChar() {
+                if (i < text.length) {
+                    title.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(typeChar, 50);
+                }
+            }
+            
+            // Uncomment to enable typewriter effect
+            // setTimeout(typeChar, 1000);
+        }
+
+        // Initialize typewriter effect
+        // typewriterEffect();
+
+        console.log('Your Mind Your Code');
+    </script>
+</body>
+</html>
